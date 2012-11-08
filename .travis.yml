@@ -11,5 +11,5 @@ before_script:
   - ./scripts/install_librabbitmq-c.sh
   - phpize . && ./configure
 
-script: make test NO_INTERACTION=1
+script: make test NO_INTERACTION=1 REPORT_EXIT_STATUS=1
 
