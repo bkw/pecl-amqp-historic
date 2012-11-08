@@ -177,6 +177,7 @@ int read_message_from_channel(amqp_connection_state_t connection, zval *envelope
 		
 		/* Check that the basic read from frame did not fail */
 		if (result < 0) {
+			zend_throw_exception(amqp_connection_exception_class_entry, amqp_error_string(-result), -result TSRMLS_CC);
 			return AMQP_READ_ERROR;
 		}
 		
@@ -233,6 +234,7 @@ int read_message_from_channel(amqp_connection_state_t connection, zval *envelope
 		/* Read in the next frame */
 		result = amqp_simple_wait_frame(connection, &frame);
 		if (result < 0) {
+			zend_throw_exception(amqp_connection_exception_class_entry, amqp_error_string(-result), -result TSRMLS_CC);
 			return AMQP_READ_ERROR;
 		}
 		
@@ -395,6 +397,7 @@ int read_message_from_channel(amqp_connection_state_t connection, zval *envelope
 			/* Read in the next frame */
 			result = amqp_simple_wait_frame(connection, &frame);
 			if (result < 0) {
+				zend_throw_exception(amqp_connection_exception_class_entry, amqp_error_string(-result), -result TSRMLS_CC);
 				return AMQP_READ_ERROR;
 			}
 			
@@ -912,7 +915,7 @@ PHP_METHOD(amqp_queue_class, get)
 /* }}} */
 
 
-/* {{{ proto array AMQPQueue::consume(callback, [flags = <bitmask>]);
+/* {{{ proto array AMQPQueue::consume(callback, [flags = <bitmask>, consumer_tag]);
 consume the message
 return array messages
 */
@@ -929,9 +932,12 @@ PHP_METHOD(amqp_queue_class, consume)
 	int read;
 	amqp_table_t *arguments;
 
+	char *consumer_tag;
+	int consumer_tag_len;
+	amqp_bytes_t consumer_tag_bytes;
 	long flags = INI_INT("amqp.auto_ack") ? AMQP_AUTOACK : AMQP_NOPARAM;
 
-	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Of|l", &id, amqp_queue_class_entry, &fci, &fci_cache, &flags) == FAILURE) {
+	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Of|ls", &id, amqp_queue_class_entry, &fci, &fci_cache, &flags, &consumer_tag, &consumer_tag_len) == FAILURE) {
 		return;
 	}
 
@@ -947,11 +953,14 @@ PHP_METHOD(amqp_queue_class, consume)
 	/* Setup the consume */
 	arguments = convert_zval_to_arguments(queue->arguments);
 
+	consumer_tag_bytes.bytes = (void *) consumer_tag;
+	consumer_tag_bytes.len = consumer_tag_len;
+
 	amqp_basic_consume(
 		connection->connection_resource->connection_state,
 		channel->channel_id,
 		amqp_cstring_bytes(queue->name),
-		AMQP_EMPTY_BYTES,					/* Consumer tag */
+		consumer_tag_bytes,					/* Consumer tag */
 		(AMQP_NOLOCAL & flags) ? 1 : 0, 	/* No local */
 		(AMQP_AUTOACK & flags) ? 1 : 0,		/* no_ack, aka AUTOACK */
 		queue->exclusive,
