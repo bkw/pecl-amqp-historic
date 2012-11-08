@@ -6,7 +6,7 @@ php:
 
 before_script:
   - ./scripts/install_librabbitmq-c.sh
-  - phpize . && configure
+  - phpize . && ./configure
 
 script: make test NO_INTERACTION=1
 
