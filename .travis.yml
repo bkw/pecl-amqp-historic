@@ -26,3 +26,4 @@ script:
 notifications:
   email:
     - lstrojny@php.net
+    - bkw@codingforce.com
